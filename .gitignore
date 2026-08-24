@@ -1,0 +1,57 @@
+# Java / Maven
+**/target/
+**/bin/
+*.class
+*.jar
+*.war
+
+# Maven
+.mvn/timing.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Secrets
+*.secret
+*.credentials
+credentials.*
+secrets.*
+
+# Private keys / certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
