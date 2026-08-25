@@ -1,0 +1,14 @@
+.git
+.github
+.idea
+.vscode
+
+src
+.mvn
+*.java
+*.md
+
+bin
+target/*.jar.original
+target/test-classes
+target/classes

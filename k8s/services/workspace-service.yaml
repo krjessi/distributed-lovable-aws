@@ -54,7 +54,7 @@ spec:
       serviceAccountName: workspace-service-account
       containers:
         - name: workspace-service
-          image: anuj55149/lovable-workspace-service:latest
+          image: 164429444725.dkr.ecr.ap-south-1.amazonaws.com/distributed-lovable/workspace-service:v1
           imagePullPolicy: Always
           ports:
             - containerPort: 9020

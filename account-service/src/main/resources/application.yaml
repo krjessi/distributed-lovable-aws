@@ -1,5 +1,13 @@
 spring:
   application:
     name: account-service
+
   config:
     import: configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://discovery-service.lovable-core.svc.cluster.local:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
