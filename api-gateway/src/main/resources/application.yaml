@@ -6,6 +6,20 @@ logging:
 spring:
   application:
     name: api-gateway
+
   config:
     import: configserver:${CONFIG_SERVER_URL:http://localhost:8888}
-    
+
+  cloud:
+    gateway:
+      routes:
+        - id: account-service
+          uri: lb://ACCOUNT-SERVICE
+          predicates:
+            - Path=/auth/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
