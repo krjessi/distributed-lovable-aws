@@ -11,3 +11,13 @@ eureka:
       defaultZone: http://discovery-service.lovable-core.svc.cluster.local:8761/eureka/
     register-with-eureka: true
     fetch-registry: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
