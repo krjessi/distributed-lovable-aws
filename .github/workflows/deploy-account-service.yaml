@@ -3,13 +3,19 @@ name: Deploy Account Service
 on:
   push:
     branches:
-      - master
+      - main
     paths:
       - 'account-service/**'
+      - 'common-lib/**'
+      - '.github/workflows/deploy-account-service.yaml'
 
 env:
+  AWS_REGION: ap-south-1
+  ECR_REGISTRY: 164429444725.dkr.ecr.ap-south-1.amazonaws.com
+  ECR_REPOSITORY: distributed-lovable/account-service
+  EKS_CLUSTER: distributed-lovable-dev-eks
+  NAMESPACE: lovable-core
   SERVICE_NAME: account-service
-  IMAGE_NAME: anuj55149/lovable-account-service
 
 permissions:
   id-token: write
@@ -17,7 +23,7 @@ permissions:
 
 jobs:
   build-and-deploy:
-    name: Build, Push, and Deploy to GKE
+    name: Build, Push, and Deploy to EKS
     runs-on: ubuntu-latest
 
     steps:
@@ -28,38 +34,62 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: 'temurin'
+          distribution: temurin
           cache: maven
-      
+
       - name: Build and Install Common Lib
         working-directory: ./common-lib
         run: ./mvnw clean install -DskipTests
 
-      - name: Build and Push Docker Image with Jib
-        working-directory: ./${{ env.SERVICE_NAME }}
-        run: |
-          ./mvnw compile jib:build \
-            -Djib.to.image=docker.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            -Djib.to.tags=latest \
-            -Djib.to.auth.username=${{ secrets.DOCKERHUB_USERNAME }} \
-            -Djib.to.auth.password=${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build Application
+        working-directory: ./account-service
+        run: ./mvnw clean package -DskipTests
 
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          workload_identity_provider: '${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}'
-          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT }}'
+          role-to-assume: arn:aws:iam::164429444725:role/distributed-lovable-github-actions
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Get GKE Credentials
-        uses: google-github-actions/get-gke-credentials@v2
-        with:
-          cluster_name: ${{ secrets.GCP_CLUSTER }}
-          location: ${{ secrets.GCP_ZONE }}
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Deploy to GKE
+      - name: Build Docker Image
+        working-directory: ./account-service
         run: |
-          kubectl set image deployment/${{ env.SERVICE_NAME }} \
-          ${{ env.SERVICE_NAME }}=${{ env.IMAGE_NAME }}:${{ github.sha }} \
-          -n lovable-core
-          
-          kubectl rollout status deployment/${{ env.SERVICE_NAME }} -n lovable-core
+          docker build \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} \
+            .
+
+      - name: Push Docker Image
+        run: |
+          docker push \
+            $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig \
+            --region $AWS_REGION \
+            --name $EKS_CLUSTER
+
+      - name: Deploy to EKS
+        run: |
+          kubectl set image deployment/$SERVICE_NAME \
+            $SERVICE_NAME=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} \
+            -n $NAMESPACE
+
+      - name: Wait for Rollout
+        run: |
+          kubectl rollout status \
+            deployment/$SERVICE_NAME \
+            -n $NAMESPACE \
+            --timeout=5m
+
+      - name: Verify Deployment
+        run: |
+          kubectl get deployment $SERVICE_NAME -n $NAMESPACE \
+            -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+
+          kubectl get pods \
+            -n $NAMESPACE \
+            -l app=$SERVICE_NAME
