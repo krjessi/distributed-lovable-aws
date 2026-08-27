@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: config-service
+  namespace: lovable-core
+  labels:
+    release: monitoring
+spec:
+  endpoints:
+    - interval: 15s
+      path: /actuator/prometheus
+      port: management
+      scheme: http
+  namespaceSelector:
+    matchNames:
+      - lovable-core
+  selector:
+    matchLabels:
+      app: config-service

@@ -49,7 +49,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /actuator/health
-              port: 8888
+              port: 8889
             initialDelaySeconds: 90
             periodSeconds: 15
             timeoutSeconds: 5
@@ -57,14 +57,14 @@ spec:
           startupProbe:
             httpGet:
               path: /actuator/health
-              port: 8888
+              port: 8889
             failureThreshold: 30
             periodSeconds: 10
             timeoutSeconds: 5
           livenessProbe:
             httpGet:
               path: /actuator/health
-              port: 8888
+              port: 8889
             initialDelaySeconds: 120
             periodSeconds: 20
             timeoutSeconds: 5
@@ -75,9 +75,15 @@ kind: Service
 metadata:
   name: config-service
   namespace: lovable-core
+  labels:
+    app: config-service
 spec:
   selector:
     app: config-service
   ports:
-    - port: 8888
+    - name: http
+      port: 8888
       targetPort: 8888
+    - name: management
+      port: 8889
+      targetPort: 8889
