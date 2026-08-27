@@ -5,6 +5,8 @@ kind: Deployment
 metadata:
   name: account-service
   namespace: lovable-core
+  labels:
+    app: account-service
 spec:
   replicas: 1
   selector:
@@ -17,7 +19,7 @@ spec:
     spec:
       containers:
         - name: account-service
-          image: 164429444725.dkr.ecr.ap-south-1.amazonaws.com/distributed-lovable/account-service:v1
+          image: 164429444725.dkr.ecr.ap-south-1.amazonaws.com/distributed-lovable/account-service:v3
           imagePullPolicy: Always
           ports:
             - containerPort: 8080      
@@ -85,9 +87,12 @@ kind: Service
 metadata:
   name: account-service
   namespace: lovable-core
+  labels:
+    app: account-service
 spec:
   selector:
     app: account-service
   ports:
     - port: 8080
+      name: http
       targetPort: 8080
