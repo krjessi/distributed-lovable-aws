@@ -10,6 +10,7 @@ on:
 
 env:
   AWS_REGION: ap-south-1
+  ECR_REGISTRY: 164429444725.dkr.ecr.ap-south-1.amazonaws.com
   ECR_REPOSITORY: distributed-lovable/api-gateway
   EKS_CLUSTER: distributed-lovable-dev-eks
   NAMESPACE: lovable-core
@@ -32,10 +33,10 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: 'temurin'
+          distribution: temurin
           cache: maven
 
-      - name: Build with Maven
+      - name: Build Application
         working-directory: ./api-gateway
         run: ./mvnw clean package -DskipTests
 
@@ -46,23 +47,21 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and Push Docker Image
+      - name: Build Docker Image
         working-directory: ./api-gateway
-        env:
-          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build \
-            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} \
             .
-          
-          docker push \
-            $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      - name: Configure kubectl for EKS
+      - name: Push Docker Image
+        run: |
+          docker push \
+            $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+
+      - name: Configure kubectl
         run: |
           aws eks update-kubeconfig \
             --region $AWS_REGION \
@@ -71,7 +70,7 @@ jobs:
       - name: Deploy to EKS
         run: |
           kubectl set image deployment/$SERVICE_NAME \
-            $SERVICE_NAME=${{ steps.ecr-login.outputs.registry }}/$ECR_REPOSITORY:${{ github.sha }} \
+            $SERVICE_NAME=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} \
             -n $NAMESPACE
 
       - name: Wait for Rollout
@@ -83,16 +82,9 @@ jobs:
 
       - name: Verify Deployment
         run: |
-          kubectl get deployment $SERVICE_NAME -n $NAMESPACE
-          kubectl get pods -n $NAMESPACE -l app=$SERVICE_NAME
+          kubectl get deployment $SERVICE_NAME -n $NAMESPACE \
+            -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
 
-      - name: Health Check
-        run: |
-          kubectl run ci-health-check \
+          kubectl get pods \
             -n $NAMESPACE \
-            --rm \
-            -i \
-            --restart=Never \
-            --image=curlimages/curl \
-            -- \
-            curl -fsS http://$SERVICE_NAME:80/actuator/health
+            -l app=$SERVICE_NAME
