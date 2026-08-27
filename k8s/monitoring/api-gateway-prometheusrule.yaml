@@ -1,0 +1,74 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: api-gateway-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+
+spec:
+  groups:
+    - name: api-gateway
+      rules:
+
+        - alert: APIGatewayDown
+          expr: absent(up{service="api-gateway"}) or min(up{service="api-gateway"}) == 0
+          for: 2m
+          labels:
+            severity: critical
+            service: api-gateway
+          annotations:
+            summary: "API Gateway is down"
+            description: "API Gateway has been unavailable for more than 2 minutes."
+
+        - alert: APIGatewayHighErrorRate
+          expr: |
+            (
+              100 *
+              sum(
+                rate(
+                  http_server_requests_seconds_count{
+                    service="api-gateway",
+                    uri!~"/actuator/.*",
+                    status=~"5.."
+                  }[5m]
+                )
+              )
+              /
+              sum(
+                rate(
+                  http_server_requests_seconds_count{
+                    service="api-gateway",
+                    uri!~"/actuator/.*"
+                  }[5m]
+                )
+              )
+            ) > 5
+          for: 5m
+          labels:
+            severity: warning
+            service: api-gateway
+          annotations:
+            summary: "API Gateway error rate is high"
+            description: "API Gateway 5xx error rate has exceeded 5% for more than 5 minutes."
+
+        - alert: APIGatewayHighP95Latency
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum by (le) (
+                rate(
+                  http_server_requests_seconds_bucket{
+                    service="api-gateway",
+                    uri!~"/actuator/.*"
+                  }[15m]
+                )
+              )
+            ) > 0.5
+          for: 5m
+          labels:
+            severity: warning
+            service: api-gateway
+          annotations:
+            summary: "API Gateway P95 latency is high"
+            description: "API Gateway P95 latency has exceeded 500ms for more than 5 minutes."
