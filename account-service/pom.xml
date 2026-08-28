@@ -182,6 +182,26 @@
 					</excludes>
 				</configuration>
 			</plugin>
+                        <plugin>
+                                <groupId>org.owasp</groupId>
+                                <artifactId>dependency-check-maven</artifactId>
+                                <version>12.1.0</version>
+                                <executions>
+                                        <execution>
+                                                <phase>package</phase>
+                                                <goals>
+                                                        <goal>check</goal>
+                                                </goals>
+                                        </execution>
+                                </executions>
+                                <configuration>
+                                        <failBuildOnCVSS>11</failBuildOnCVSS>
+                                        <formats>
+                                                <format>HTML</format>
+                                        </formats>
+                                        <ossindexAnalyzerEnabled>false</ossindexAnalyzerEnabled>
+                                </configuration>
+                        </plugin>
 		</plugins>
 	</build>
 
