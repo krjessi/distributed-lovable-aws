@@ -1,452 +1,547 @@
-# Distributed Lovable -- AWS DevOps & SRE Project
+# Enterprise CI/CD Deployment, DevSecOps & Monitoring of Microservices on Kubernetes (AWS)
 
-A cloud-native distributed application deployed on **AWS EKS** with
-**Kubernetes, Docker, GitHub Actions, Amazon ECR, Prometheus, Grafana,
-and Prometheus alerting**.
-
-------------------------------------------------------------------------
-
-## Architecture
-
-The application is deployed on Amazon EKS and consists of Spring Boot
-microservices and supporting infrastructure components.
-
-``` text
-                         GitHub
-                           |
-                           v
-                    GitHub Actions
-                           |
-                  +--------+--------+
-                  |                 |
-                  v                 v
-             Maven Build       Docker Build
-                                    |
-                                    v
-                              Amazon ECR
-                                    |
-                                    v
-                              Amazon EKS
-                                    |
-              +---------------------+---------------------+
-              |                     |                     |
-              v                     v                     v
-        API Gateway          Account Service       Config Service
-              |                     |                     |
-              +---------------------+---------------------+
-                                    |
-                                    v
-                            Discovery Service
-                                    |
-              +---------------------+---------------------+
-              |          Supporting Services              |
-              |                                             |
-              | Kafka | Redis | PostgreSQL/pgvector | MinIO |
-              +---------------------------------------------+
-
-                         Monitoring
-                            |
-                  +---------+---------+
-                  |                   |
-              Prometheus           Grafana
-                  |
-             Alertmanager
-```
-
-------------------------------------------------------------------------
+An end-to-end DevOps, DevSecOps, and observability project for building, securing, containerizing, deploying, and monitoring Spring Boot microservices on Kubernetes using AWS EKS.
 
 ## Technology Stack
 
-  Category                  Technologies
-  ------------------------- -------------------------------
-  Cloud                     AWS
-  Container Orchestration   Amazon EKS, Kubernetes
-  Containerization          Docker
-  CI/CD                     GitHub Actions
-  Container Registry        Amazon ECR
-  Application               Java 21, Spring Boot
-  Build                     Maven
-  Service Discovery         Netflix Eureka
-  Messaging                 Apache Kafka
-  Cache                     Redis
-  Database                  PostgreSQL / pgvector
-  Object Storage            MinIO
-  Monitoring                Prometheus
-  Visualization             Grafana
-  Alerting                  PrometheusRule / Alertmanager
-  Operating System          Amazon Linux
-  Version Control           Git / GitHub
+| Category | Technology |
+|---|---|
+| Cloud | AWS |
+| Kubernetes | Amazon EKS |
+| Containerization | Docker |
+| Orchestration | Kubernetes |
+| Package Management | Helm |
+| CI/CD | Jenkins, GitHub Actions |
+| Build | Maven |
+| Code Quality | SonarQube |
+| Dependency Security | OWASP Dependency-Check |
+| Container Security | Trivy |
+| Container Registry | Amazon ECR |
+| Monitoring | Prometheus, Grafana |
+| Cloud Monitoring | Amazon CloudWatch |
+| Infrastructure as Code | Terraform |
+| Operating System | Linux |
+| Scripting | Python |
+| Application | Spring Boot Microservices |
 
-------------------------------------------------------------------------
+---
 
-## Microservices
+## Architecture
 
-The application currently contains:
-
--   **API Gateway**
--   **Account Service**
--   **Config Service**
--   **Discovery Service**
-
-Supporting infrastructure:
-
--   **Kafka**
--   **Redis**
--   **PostgreSQL / pgvector**
--   **MinIO**
-
-------------------------------------------------------------------------
-
-## AWS Infrastructure
-
-The project runs in AWS Region:
-
-``` text
-ap-south-1 (Mumbai)
+```text
+                         Developer
+                             │
+                             ▼
+                          GitHub
+                             │
+                      Webhook / Trigger
+                             │
+                             ▼
+                    Jenkins / GitHub Actions
+                             │
+                             ▼
+                       Source Checkout
+                             │
+                             ▼
+                       Maven Build
+                             │
+              ┌──────────────┴──────────────┐
+              │                             │
+              ▼                             ▼
+         Unit Testing                 OWASP Dependency-Check
+              │                             │
+              │                     CVE / Dependency Scan
+              │                             │
+              └──────────────┬──────────────┘
+                             ▼
+                         SonarQube
+                             │
+                       Code Quality
+                             │
+                             ▼
+                       Docker Build
+                             │
+                             ▼
+                           Trivy
+                             │
+                    Container Image Scan
+                             │
+                             ▼
+                         Amazon ECR
+                             │
+                             ▼
+                         Helm Deploy
+                             │
+                             ▼
+                      Amazon EKS
+                             │
+                ┌────────────┴────────────┐
+                │                         │
+                ▼                         ▼
+          Health Checks              Smoke Tests
+                │                         │
+                └────────────┬────────────┘
+                             ▼
+                       Monitoring
+                             │
+                ┌────────────┼────────────┐
+                ▼            ▼            ▼
+           Prometheus      Grafana     CloudWatch
 ```
 
-Primary infrastructure includes:
+---
 
--   Amazon EKS
--   EC2 worker nodes
--   Amazon ECR
--   VPC networking
--   IAM
--   Kubernetes networking and services
+# 1. Project Overview
 
-### EKS Cluster
+This project demonstrates an enterprise-style CI/CD, DevSecOps, Kubernetes, AWS, and monitoring workflow for Spring Boot microservices.
 
-``` text
-distributed-lovable-dev-eks
-```
+The implementation covers:
 
-------------------------------------------------------------------------
+- Source code management with GitHub
+- CI/CD automation with Jenkins and GitHub Actions
+- Maven build and unit testing
+- Static code-quality analysis with SonarQube
+- Dependency vulnerability scanning with OWASP Dependency-Check
+- Docker image creation
+- Container image scanning with Trivy
+- Image publishing to Amazon ECR
+- Kubernetes deployment using Helm
+- Application health checks
+- Smoke testing
+- Monitoring with Prometheus, Grafana, and Amazon CloudWatch
+- Kubernetes troubleshooting and RCA
 
-## Kubernetes Deployment
+---
 
-Application workloads run in the:
+# 2. CI/CD Pipeline
 
-``` text
-lovable-core
-```
+The CI/CD pipeline automates the software delivery process from source checkout through Kubernetes deployment and validation.
 
-namespace.
+## Pipeline Flow
 
-Monitoring workloads run in:
-
-``` text
-monitoring
-```
-
-namespace.
-
-### Application Workloads
-
-The `lovable-core` namespace contains:
-
--   API Gateway
--   Account Service
--   Config Service
--   Discovery Service
--   Kafka
--   Redis
--   PostgreSQL / pgvector
--   MinIO
-
-### EKS Nodes
-
-![EKS Nodes](screenshots/eks-nodes.png)
-
-------------------------------------------------------------------------
-
-## CI/CD Pipeline
-
-GitHub Actions automates application build and deployment.
-
-### Deployment Flow
-
-``` text
-Developer Push
-      |
-      v
+```text
 GitHub
-      |
-      v
-GitHub Actions
-      |
-      +--> Maven Build
-      |
-      +--> Docker Build
-      |
-      +--> Push Image to Amazon ECR
-      |
-      +--> Configure EKS Access
-      |
-      +--> Update Kubernetes Deployment
-      |
-      +--> Wait for Rollout
-      |
-      +--> Verify Deployment
+   │
+   ▼
+Jenkins / GitHub Actions
+   │
+   ▼
+Source Checkout
+   │
+   ▼
+Maven Build
+   │
+   ├── Unit Testing
+   │
+   └── OWASP Dependency-Check
+   │
+   ▼
+SonarQube
+   │
+   ▼
+Docker Build
+   │
+   ▼
+Trivy Image Scan
+   │
+   ▼
+Amazon ECR
+   │
+   ▼
+Helm Deployment
+   │
+   ▼
+Amazon EKS
+   │
+   ├── Health Checks
+   └── Smoke Tests
+   │
+   ▼
+Monitoring
 ```
 
-Separate deployment workflows are configured for the major
-microservices.
+## CI/CD Stages
 
-### CI/CD Features
+### Source Checkout
 
--   Automated Maven build
--   Docker image creation
--   Git SHA image tagging
--   Amazon ECR image push
--   AWS authentication using IAM
--   Kubernetes deployment
--   Rolling update
--   Rollout validation
--   Deployment verification
+The pipeline retrieves application source code from GitHub.
 
-------------------------------------------------------------------------
+### Maven Build
 
-## Kubernetes Workloads
+Maven is used to compile and package Spring Boot applications.
 
-Current application workloads can be verified using:
-
-``` bash
-kubectl get pods -n lovable-core
+```text
+Source Code
+    ↓
+Maven Build
+    ↓
+Application JAR
 ```
 
-Example project state:
+### Unit Testing
 
-![Application Pods](screenshots/application-pods.png)
+Unit tests are executed as part of the CI process before deployment.
 
-The project also runs a Kubernetes monitoring stack:
+### OWASP Dependency-Check
 
-![Monitoring Pods](screenshots/monitoring-pods.png)
+OWASP Dependency-Check is used to identify known vulnerabilities in third-party dependencies and report associated CVEs.
 
-------------------------------------------------------------------------
+### SonarQube
 
-## Monitoring & Observability
+SonarQube is used for source-code quality analysis and identification of code-quality and security-related findings.
 
-Prometheus collects application and Kubernetes metrics.
+### Docker Build
 
-Grafana provides dashboards for visualization.
+The Spring Boot application is packaged into a Docker image.
 
-### Application Monitoring
+### Trivy
 
-ServiceMonitors are configured for:
+Trivy scans the Docker image for known container and image vulnerabilities before publishing.
 
--   API Gateway
--   Account Service
--   Config Service
--   Discovery Service
+### Amazon ECR
 
-Spring Boot Actuator exposes Prometheus metrics through:
+Validated Docker images are published to Amazon Elastic Container Registry.
 
-``` text
-/actuator/prometheus
+### Helm Deployment
+
+Helm is used to deploy the application to Kubernetes running on Amazon EKS.
+
+### Health Checks
+
+Post-deployment health checks validate application availability.
+
+### Smoke Tests
+
+Smoke tests provide basic post-deployment validation before the deployment is considered successful.
+
+---
+
+# 3. Kubernetes Deployment
+
+Spring Boot microservices are containerized with Docker and deployed to Amazon EKS using Kubernetes and Helm.
+
+Kubernetes resources used include:
+
+- Deployments
+- Services
+- Ingress
+- ConfigMaps
+- Secrets
+- Resource limits
+- Health probes
+- Horizontal Pod Autoscaler (HPA)
+
+## Deployment Flow
+
+```text
+Amazon ECR
+    │
+    ▼
+   Helm
+    │
+    ▼
+Amazon EKS
+    │
+    ├── Deployments
+    ├── Services
+    ├── Ingress
+    ├── ConfigMaps
+    ├── Secrets
+    ├── Health Probes
+    ├── Resource Limits
+    └── HPA
 ```
 
-### Prometheus Service Health
+---
 
-The application services are monitored using the Prometheus `up` metric.
+# 4. DevSecOps
 
-``` promql
-up{namespace="lovable-core"}
+Security controls are integrated into the CI/CD lifecycle.
+
+```text
+Code
+ │
+ ├── Unit Tests
+ ├── OWASP Dependency-Check
+ ├── SonarQube
+ ├── Docker Build
+ └── Trivy
+       │
+       ▼
+     Amazon ECR
+       │
+       ▼
+     Amazon EKS
 ```
 
-Example healthy result:
+| Tool | Purpose |
+|---|---|
+| SonarQube | Code quality and analysis |
+| OWASP Dependency-Check | Dependency vulnerability scanning |
+| Trivy | Container/image vulnerability scanning |
 
-``` text
-api-gateway        1
-account-service    1
-config-service     1
-discovery-service  1
+The objective is to identify quality and security risks before deployment.
+
+---
+
+# 5. Monitoring & Observability
+
+Monitoring is implemented using Prometheus, Grafana, and Amazon CloudWatch.
+
+## Monitoring Architecture
+
+```text
+                     Kubernetes
+                         │
+             ┌───────────┴───────────┐
+             │                       │
+             ▼                       ▼
+        Applications           Kubernetes Resources
+             │                       │
+             └───────────┬───────────┘
+                         ▼
+                    Prometheus
+                         │
+                         ▼
+                      Grafana
+
+
+                  AWS Environment
+                         │
+                         ▼
+                    CloudWatch
 ```
 
-![Prometheus Service Health](screenshots/prometheus-health.png)
+Monitoring covers:
 
-------------------------------------------------------------------------
+- Application health
+- Kubernetes resources
+- CPU utilization
+- Memory utilization
+- Pod failures
+- Deployment behavior
 
-## Grafana Dashboard
+Prometheus collects metrics, Grafana provides dashboards and visualization, and CloudWatch provides AWS-level monitoring.
 
-The Grafana dashboard provides an application-focused monitoring view.
+---
 
-It includes:
+# 6. Incident Simulation & Troubleshooting
 
--   Microservices health
--   CPU usage by pod
--   Memory usage by pod
--   HTTP request rate
+Production-style incidents are simulated and investigated using Kubernetes troubleshooting and RCA practices.
 
-![Grafana Dashboard](screenshots/grafana-dashboard.png)
+Scenarios include:
 
-------------------------------------------------------------------------
+- Pod failures
+- CrashLoopBackOff
+- Image-pull failures
+- Resource exhaustion
+- Configuration issues
+- Failed deployments
 
-## Prometheus Alerting
+## Troubleshooting Flow
 
-PrometheusRule resources are configured for application availability.
-
-Current application availability alerts include:
-
--   API Gateway Down
--   Config Service Down
--   Discovery Service Down
-
-Example alert expression:
-
-``` promql
-up{job="config-service"} == 0
+```text
+Incident
+   │
+   ▼
+Check Pod Status
+   │
+   ▼
+Check Events
+   │
+   ▼
+Check Logs
+   │
+   ▼
+Check Deployment
+   │
+   ▼
+Check Service
+   │
+   ▼
+Check Configuration
+   │
+   ▼
+Check Resources
+   │
+   ▼
+Root Cause
+   │
+   ▼
+Remediation
+   │
+   ▼
+Redeploy
+   │
+   ▼
+Health Check
+   │
+   ▼
+Smoke Test
+   │
+   ▼
+Validate Recovery
 ```
 
-The alerts are configured with a delay before firing to avoid
-unnecessary alerts from short-lived failures.
+Useful commands:
 
-------------------------------------------------------------------------
-
-## Health Checks
-
-Kubernetes health probes are configured for application services where
-required.
-
-The project uses:
-
--   Startup probes
--   Readiness probes
--   Liveness probes
-
-Example:
-
-``` text
-Startup Probe
-     |
-     v
-Application starts
-     |
-     v
-Readiness Probe
-     |
-     v
-Pod receives traffic
-     |
-     v
-Liveness Probe
-     |
-     v
-Detect unhealthy application
+```bash
+kubectl get pods
+kubectl describe pod <pod-name>
+kubectl logs <pod-name>
+kubectl get deployments
+kubectl get services
+kubectl get events
+kubectl rollout status deployment/<deployment-name>
 ```
 
-------------------------------------------------------------------------
+---
 
-## Deployment Validation
+# 7. AWS EKS
 
-Deployments are validated using Kubernetes rollout status:
+Amazon EKS is used as the Kubernetes platform for deploying the microservices.
 
-``` bash
-kubectl rollout status deployment/<service> -n lovable-core
+```text
+                         AWS
+                          │
+                          ▼
+                    Amazon EKS
+                          │
+              ┌───────────┴───────────┐
+              │                       │
+              ▼                       ▼
+       Kubernetes Workloads      Monitoring
+              │                       │
+              ├── Microservices       ├── Prometheus
+              ├── Services            ├── Grafana
+              ├── Ingress             └── CloudWatch
+              └── HPA
 ```
 
-The deployed image can be verified with:
+Container images are stored in Amazon ECR and consumed by Kubernetes during deployment.
 
-``` bash
-kubectl get deployment <service> \
-  -n lovable-core \
-  -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+---
+
+# 8. Infrastructure as Code
+
+Terraform is used for AWS infrastructure provisioning and management.
+
+```text
+Terraform
+    │
+    ▼
+AWS Infrastructure
+    │
+    ├── Networking
+    ├── Compute
+    └── Kubernetes Infrastructure
 ```
 
-Prometheus can also be used to validate application availability:
+Terraform allows infrastructure configuration to be maintained as code and reproduced consistently.
 
-``` promql
-up{namespace="lovable-core"}
+---
+
+# 9. Linux & Python
+
+Linux is used for application, infrastructure, and Kubernetes operations.
+
+Python is used for automation and scripting tasks where required.
+
+Typical activities include:
+
+- System administration
+- Kubernetes troubleshooting
+- Automation
+- Operational scripting
+- Log analysis
+- Deployment support
+
+---
+
+# 10. Project Validation
+
+The deployment validation process follows:
+
+```text
+Build
+  ↓
+Unit Test
+  ↓
+Dependency Scan
+  ↓
+SonarQube
+  ↓
+Docker Build
+  ↓
+Trivy Scan
+  ↓
+ECR Push
+  ↓
+Helm Deploy
+  ↓
+EKS
+  ↓
+Health Check
+  ↓
+Smoke Test
+  ↓
+Monitoring
 ```
 
-------------------------------------------------------------------------
+The objective is to validate the application across build, security, deployment, and post-deployment stages.
 
-## Reliability & SRE Practices
+---
 
-The project demonstrates practical DevOps and SRE practices including:
+# 11. Key DevOps & SRE Practices
 
--   Kubernetes health probes
--   Readiness and liveness checks
--   Startup probes
--   Rolling deployments
--   Automated rollout validation
--   Prometheus monitoring
--   Grafana dashboards
--   Service-level health monitoring
--   Prometheus alerting
--   Containerized workloads
--   Automated CI/CD
--   Immutable Docker image tagging using Git SHA
+- Infrastructure as Code
+- Automated CI/CD
+- Continuous security scanning
+- Containerization
+- Kubernetes orchestration
+- Helm-based deployments
+- Health validation
+- Smoke testing
+- Application monitoring
+- Kubernetes monitoring
+- Incident troubleshooting
+- Root cause analysis
+- Deployment validation
+- Production-oriented operational practices
 
-------------------------------------------------------------------------
+---
 
-## Repository Structure
+# 12. Project Status
 
-``` text
-distributed-lovable/
-│
-├── api-gateway/
-├── account-service/
-├── config-service/
-├── discovery-service/
-│
-├── k8s/
-│   ├── services/
-│   └── monitoring/
-│
-├── .github/
-│   └── workflows/
-│
-├── screenshots/
-│   ├── eks-nodes.png
-│   ├── application-pods.png
-│   ├── monitoring-pods.png
-│   ├── prometheus-health.png
-│   └── grafana-dashboard.png
-│
-└── README.md
-```
+| Area | Status |
+|---|---|
+| Spring Boot Microservices | Implemented |
+| Docker Containerization | Implemented |
+| Kubernetes Deployment | Implemented |
+| Helm | Implemented |
+| Amazon EKS | Implemented |
+| Amazon ECR | Implemented |
+| Jenkins | Implemented / Integrated |
+| GitHub Actions | Implemented / Integrated |
+| Maven | Implemented |
+| SonarQube | Implemented / Integrated |
+| OWASP Dependency-Check | Implemented / Integrated |
+| Trivy | Implemented / Integrated |
+| Prometheus | Implemented |
+| Grafana | Implemented |
+| CloudWatch | Implemented |
+| Terraform | Implemented |
+| Linux | Used |
+| Python | Used |
+| Incident Simulation | Implemented |
+| Kubernetes Troubleshooting / RCA | Implemented |
 
-------------------------------------------------------------------------
+---
 
-## Key Kubernetes Resources
+# 13. Author
 
-### ServiceMonitors
+**Mukesh Kumar**
 
-``` text
-account-service
-api-gateway
-config-service
-discovery-service
-```
+DevOps / SRE Engineer
 
-### PrometheusRules
-
-``` text
-api-gateway-alerts
-config-service-alerts
-discovery-service-alerts
-```
-
-------------------------------------------------------------------------
-
-## Project Highlights
-
--   Deployed a distributed Spring Boot application on AWS EKS.
--   Containerized microservices using Docker.
--   Automated application delivery using GitHub Actions.
--   Used Amazon ECR for container image management.
--   Implemented Kubernetes rolling deployments.
--   Integrated Prometheus and Grafana for observability.
--   Implemented application availability alerts.
--   Added Kubernetes health probes.
--   Added rollout validation and deployment verification.
--   Built a practical cloud-native DevOps/SRE environment on AWS.
-
-------------------------------------------------------------------------
-
-## Project Status
-
-**Completed**
-
-Core application deployment, CI/CD, Kubernetes orchestration,
-monitoring, observability, and alerting have been implemented.
+This project demonstrates an enterprise-style CI/CD, DevSecOps, Kubernetes, AWS, infrastructure-as-code, monitoring, and SRE troubleshooting workflow.
