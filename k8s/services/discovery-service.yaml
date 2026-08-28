@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: discovery-service
   namespace: lovable-core
+  labels:
+    app: discovery-service
 spec:
   replicas: 1
   selector:

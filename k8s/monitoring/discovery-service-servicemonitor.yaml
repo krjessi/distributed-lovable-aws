@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: discovery-service
+  namespace: lovable-core
+  labels:
+    release: monitoring
+spec:
+  endpoints:
+    - interval: 15s
+      path: /actuator/prometheus
+      port: http
+      scheme: http
+  namespaceSelector:
+    matchNames:
+      - lovable-core
+  selector:
+    matchLabels:
+      app: discovery-service

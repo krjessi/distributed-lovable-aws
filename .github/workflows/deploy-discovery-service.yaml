@@ -1,0 +1,92 @@
+name: Deploy Discovery Service
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'discovery-service/**'
+      - 'k8s/services/discovery-service.yaml'
+      - 'k8s/monitoring/discovery-service-servicemonitor.yaml'
+      - '.github/workflows/deploy-discovery-service.yaml'
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REGISTRY: 164429444725.dkr.ecr.ap-south-1.amazonaws.com
+  ECR_REPOSITORY: distributed-lovable/discovery-service
+  EKS_CLUSTER: distributed-lovable-dev-eks
+  NAMESPACE: lovable-core
+  SERVICE_NAME: discovery-service
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-deploy:
+    name: Build, Push, and Deploy to EKS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+
+      - name: Build Application
+        working-directory: ./discovery-service
+        run: ./mvnw clean package -DskipTests
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::164429444725:role/distributed-lovable-github-actions
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker Image
+        working-directory: ./discovery-service
+        run: |
+          docker build \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} \
+            .
+
+      - name: Push Docker Image
+        run: |
+          docker push \
+            $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig \
+            --region $AWS_REGION \
+            --name $EKS_CLUSTER
+
+      - name: Deploy to EKS
+        run: |
+          kubectl set image deployment/$SERVICE_NAME \
+            $SERVICE_NAME=$ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} \
+            -n $NAMESPACE
+
+      - name: Wait for Rollout
+        run: |
+          kubectl rollout status \
+            deployment/$SERVICE_NAME \
+            -n $NAMESPACE \
+            --timeout=5m
+
+      - name: Verify Deployment
+        run: |
+          kubectl get deployment $SERVICE_NAME -n $NAMESPACE \
+            -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+
+          kubectl get pods \
+            -n $NAMESPACE \
+            -l app=$SERVICE_NAME
