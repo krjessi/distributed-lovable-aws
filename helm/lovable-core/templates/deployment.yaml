@@ -29,5 +29,7 @@ spec:
                 secretKeyRef:
                   name: app-secrets
                   key: ACCOUNT_DB_PASSWORD
+            - name: APP_FRONTEND_URL
+              value: "http://localhost:5173"
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
