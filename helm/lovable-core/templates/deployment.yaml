@@ -18,6 +18,9 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.service.targetPort }}
+          envFrom:
+            - secretRef:
+                name: app-secrets
           env:
             - name: CONFIG_SERVER_URL
               value: "{{ .Values.configServer.url }}"
