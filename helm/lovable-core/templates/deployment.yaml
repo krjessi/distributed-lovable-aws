@@ -24,5 +24,10 @@ spec:
           env:
             - name: CONFIG_SERVER_URL
               value: "{{ .Values.configServer.url }}"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: ACCOUNT_DB_PASSWORD
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
