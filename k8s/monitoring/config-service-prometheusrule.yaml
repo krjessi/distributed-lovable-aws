@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: config-service-alerts
+  namespace: lovable-core
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: config-service
+      rules:
+        - alert: ConfigServiceDown
+          expr: up{job="config-service"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Config Service is down"
+            description: "Config Service has been unavailable for more than 2 minutes."

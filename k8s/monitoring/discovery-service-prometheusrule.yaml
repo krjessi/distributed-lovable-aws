@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: discovery-service-alerts
+  namespace: lovable-core
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: discovery-service
+      rules:
+        - alert: DiscoveryServiceDown
+          expr: up{job="discovery-service"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Discovery Service is down"
+            description: "Discovery Service has been unavailable for more than 2 minutes."
