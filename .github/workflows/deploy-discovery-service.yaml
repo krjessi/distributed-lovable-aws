@@ -58,6 +58,15 @@ jobs:
             -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} \
             .
 
+      - name: Scan Docker Image with Trivy
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'
+
       - name: Push Docker Image
         run: |
           docker push \
