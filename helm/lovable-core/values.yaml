@@ -1,9 +1,18 @@
 replicaCount: 1
 
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 50
+
 image:
   repository: 164429444725.dkr.ecr.ap-south-1.amazonaws.com/distributed-lovable/account-service
   tag: latest
   pullPolicy: IfNotPresent
+
+configServer:
+  url: http://config-service.lovable-core.svc.cluster.local:8888
 
 service:
   port: 8080

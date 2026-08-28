@@ -4,7 +4,6 @@ metadata:
   name: account-service
   namespace: lovable-core
 spec:
-  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
       app: account-service
@@ -19,5 +18,8 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.service.targetPort }}
+          env:
+            - name: CONFIG_SERVER_URL
+              value: "{{ .Values.configServer.url }}"
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
